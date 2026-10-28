@@ -30,12 +30,15 @@ export function Layout({ children }: { children: ReactNode }) {
       )}
 
       <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-1.5 px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
           <Link to="/" className="flex items-center gap-2 text-text" aria-label={brand.name}>
-            <img src={brand.logoUrl} alt="" width={28} height={28} className="h-7 w-auto" />
+            <img src={brand.logoUrl} alt="" width={28} height={28} className="h-7 w-auto shrink-0" />
             <span className="font-bold">{brand.name}</span>
           </Link>
-          <nav className="ml-auto flex items-center gap-0.5" aria-label="Principal">
+          <nav
+            className="no-scrollbar -mx-1 flex items-center gap-0.5 overflow-x-auto px-1 sm:mx-0 sm:ml-auto sm:overflow-visible sm:px-0"
+            aria-label="Principal"
+          >
             {NAV.map((item) => (
               <NavLink
                 key={item.to}
@@ -43,7 +46,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 end={item.end}
                 className={({ isActive }) =>
                   cn(
-                    'rounded-md px-2.5 py-2 text-sm font-medium hover:bg-surface-2',
+                    'shrink-0 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium hover:bg-surface-2',
                     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                     isActive ? 'text-brand' : 'text-text-muted',
                   )

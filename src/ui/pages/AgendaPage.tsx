@@ -7,6 +7,7 @@ import { useAsyncData } from '../hooks/useAsyncData';
 import { todayISO } from '../lib/days';
 import { Alert, Badge, Button, Card, Spinner, buttonClasses } from '../components';
 import { SlotGrid } from '../components/SlotGrid';
+import { ChevronLeftIcon, ChevronRightIcon } from '../components/Icon';
 import { formatLongDate } from '@/lib/format';
 
 export function AgendaPage() {
@@ -45,13 +46,13 @@ export function AgendaPage() {
 
       <div className="flex items-center justify-between gap-3">
         <Button variant="secondary" onClick={() => shift(-7)}>
-          ← Anterior
+          <ChevronLeftIcon size={18} /> Anterior
         </Button>
         <p className="text-center text-sm font-medium first-letter:uppercase text-text-muted">
           {rangeLabel}
         </p>
         <Button variant="secondary" onClick={() => shift(7)}>
-          Siguiente →
+          Siguiente <ChevronRightIcon size={18} />
         </Button>
       </div>
 

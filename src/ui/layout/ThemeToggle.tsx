@@ -1,10 +1,22 @@
-import { useTheme } from '../theme/useTheme';
+import type { FC } from 'react';
+import { useTheme, type ThemePreference } from '../theme/useTheme';
+import { SunIcon, MoonIcon, MonitorIcon, type IconProps } from '../components/Icon';
 
-const LABELS = { system: 'Auto', light: 'Claro', dark: 'Oscuro' } as const;
-const ICONS = { system: '🖥️', light: '☀️', dark: '🌙' } as const;
+const LABELS: Record<ThemePreference, string> = {
+  system: 'Auto',
+  light: 'Claro',
+  dark: 'Oscuro',
+};
+
+const ICONS: Record<ThemePreference, FC<IconProps>> = {
+  system: MonitorIcon,
+  light: SunIcon,
+  dark: MoonIcon,
+};
 
 export function ThemeToggle() {
   const { preference, cycle } = useTheme();
+  const Icon = ICONS[preference];
   return (
     <button
       type="button"
@@ -13,7 +25,7 @@ export function ThemeToggle() {
       aria-label={`Tema: ${LABELS[preference]}. Cambiar.`}
       title={`Tema: ${LABELS[preference]}`}
     >
-      <span aria-hidden="true">{ICONS[preference]}</span>
+      <Icon size={18} />
       <span className="hidden sm:inline">{LABELS[preference]}</span>
     </button>
   );

@@ -5,6 +5,7 @@ import { useDocumentHead } from '../hooks/useDocumentHead';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { todayISO } from '../lib/days';
 import { Alert, Badge, Button, Card, Field, Spinner } from '../components';
+import { ChevronLeftIcon, ChevronRightIcon } from '../components/Icon';
 import { formatLongDate } from '@/lib/format';
 
 const SESSION_KEY = 'agenda.admin.unlocked';
@@ -162,7 +163,7 @@ function AdminPanel() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="secondary" onClick={() => shiftDay(-1)} aria-label="Día anterior">
-          ←
+          <ChevronLeftIcon size={18} />
         </Button>
         <input
           type="date"
@@ -172,7 +173,7 @@ function AdminPanel() {
           aria-label="Fecha"
         />
         <Button variant="secondary" onClick={() => shiftDay(1)} aria-label="Día siguiente">
-          →
+          <ChevronRightIcon size={18} />
         </Button>
         <p className="text-sm first-letter:uppercase text-text-muted">
           {formatLongDate(dateISO, brand.locale)}

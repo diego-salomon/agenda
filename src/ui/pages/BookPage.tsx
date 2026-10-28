@@ -8,6 +8,7 @@ import { useAsyncData } from '../hooks/useAsyncData';
 import { upcomingDates } from '../lib/days';
 import { Alert, Badge, Button, Card, Field, Spinner, buttonClasses } from '../components';
 import { SlotGrid } from '../components/SlotGrid';
+import { CheckIcon, ChatIcon } from '../components/Icon';
 import {
   formatCurrency,
   formatDuration,
@@ -236,9 +237,11 @@ function ServiceCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        'flex h-full w-full flex-col overflow-hidden rounded-lg border bg-surface text-left transition-colors',
+        'flex h-full w-full flex-col overflow-hidden rounded-lg border bg-surface text-left transition duration-200',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-        selected ? 'border-brand ring-2 ring-brand' : 'border-border hover:border-brand',
+        selected
+          ? 'border-brand ring-2 ring-brand'
+          : 'border-border hover:-translate-y-0.5 hover:border-brand hover:shadow-[var(--lift)]',
       )}
     >
       <img
@@ -272,14 +275,14 @@ function Confirmation({ result, onReset }: { result: BookResult; onReset: () => 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6">
       <Card className="flex flex-col items-center gap-3 p-6 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-2xl text-success">
-          ✓
+        <span className="pop-in flex h-14 w-14 items-center justify-center rounded-full bg-success-soft text-success">
+          <CheckIcon size={30} />
         </span>
         <h1 className="text-2xl font-bold text-text">¡Turno confirmado!</h1>
         <p className="text-text-muted">Guarda tu código para consultar o cancelar.</p>
         <p
           data-testid="booking-code"
-          className="rounded-md bg-surface-2 px-4 py-2 text-3xl font-bold tracking-widest text-text"
+          className="rounded-md bg-surface-2 px-4 py-2 text-3xl font-bold tracking-widest tabular-nums text-text"
           aria-label={`Tu código es ${booking.code}`}
         >
           {booking.code}
@@ -303,6 +306,7 @@ function Confirmation({ result, onReset }: { result: BookResult; onReset: () => 
       </Card>
 
       <a className={buttonClasses('primary', 'lg')} href={wa} target="_blank" rel="noopener noreferrer">
+        <ChatIcon size={20} />
         Enviar resumen por WhatsApp
       </a>
 
