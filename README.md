@@ -77,9 +77,16 @@ immediately.
 ## Notifications
 
 Confirmation (on book), reminder (24h before), cancellation — copy templated in
-`agenda.config.ts`. **Demo:** rendered on screen, labelled *simulado*, nothing
-sent. **Live:** the `notify` Supabase Edge Function fans out to an SMS/WhatsApp
-provider behind a stubbed adapter. No email, no payments.
+`agenda.config.ts`. Reminders are composed by `AgendaService.dueReminders()` for
+bookings inside the `reminderLeadHours` window and shown in the admin panel.
+**Demo:** rendered on screen, labelled *simulado*, nothing sent. **Live:** the
+`notify` Supabase Edge Function fans out to an SMS/WhatsApp provider behind a
+stubbed adapter, and the reminder window should be driven by a scheduled
+(cron) invocation. No email, no payments.
+
+The WhatsApp "Enviar resumen" button is a plain `wa.me` deep link to the
+business number — the patient taps send themselves; nothing is sent
+automatically.
 
 ## Live backend (Supabase)
 

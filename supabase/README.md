@@ -45,6 +45,19 @@ Every table carries `tenant_id` and RLS scopes writes to the signed-in admin's
 tenant (via `memberships`). For one instance per client, keep a single tenant
 row and set `VITE_TENANT_SLUG` to its slug — the extra machinery stays inert.
 
+## Known gaps & caveats (live path, unverified)
+
+- **Public cancel by code.** The `cancel_booking` RPC exists, but the generic
+  `AgendaRepository` port (load/save a whole day) can't express an anonymous
+  cancel, since an anonymous visitor can't load the real day. Admin cancel works
+  under RLS. Wiring `/mi-turno` cancel to `cancel_booking` is the remaining step.
+- **Timezone.** Slot times and the `create_booking` past-check use the browser /
+  server local time, not a configured business timezone. Fine when they match;
+  add a tenant timezone column + conversions otherwise.
+- **Catalog source of truth.** The app reads the services catalog from
+  `agenda.config.ts`; the `services` table + `seed.sql` exist for the schema the
+  spec asks for. Keep them in sync, or point the UI at the table.
+
 ## Admin auth
 
 Admin screens use Supabase Auth in live mode. Create the admin user in the

@@ -18,6 +18,7 @@ function makeService(repo = new MemoryRepo(), codes = sequentialCodes('ABC234', 
     notifications,
     brand,
     agenda,
+    demoMode: true,
   });
   return { service, repo, notifications };
 }
@@ -107,13 +108,39 @@ describe('AgendaService', () => {
     expect(day.bookings[0].status).toBe('attended');
   });
 
-  it('moves a booking across days', async () => {
-    await ctx.service.book(bookReq);
-    await ctx.service.adminMove('ABC234', '2026-10-29', '11:00');
-    const origin = await ctx.service.daySlots(WED);
-    expect(origin.slots.find((s) => s.time === '09:00')?.status).toBe('free');
-    const dest = await ctx.service.daySlots('2026-10-29');
-    expect(dest.slots.find((s) => s.time === '11:00')?.status).toBe('booked');
+  it('moves a booking to another free slot the same day', async () => {
+    await ctx.service.book(bookReq); // 09:00
+    await ctx.service.adminMove('ABC234', '10:00');
+    const day = await ctx.service.daySlots(WED);
+    expect(day.slots.find((s) => s.time === '09:00')?.status).toBe('free');
+    expect(day.slots.find((s) => s.time === '10:00')?.status).toBe('booked');
+  });
+
+  it('a longer service occupies every grid slot it spans', async () => {
+    await ctx.service.book({ ...bookReq, serviceId: 'sesion-extendida', time: '09:00' });
+    const day = await ctx.service.daySlots(WED);
+    const byTime = Object.fromEntries(day.slots.map((s) => [s.time, s.status]));
+    expect(byTime['09:00']).toBe('booked');
+    expect(byTime['10:00']).toBe('booked'); // 90 min spills into the next slot
+    expect(byTime['11:00']).toBe('free');
+    // a slot overlapping that span can no longer be booked
+    await expect(ctx.service.book({ ...bookReq, time: '10:00' })).rejects.toThrow(/disponible/);
+  });
+
+  it('rejects a service that would run past closing', async () => {
+    // extendida (90 min) at 11:00 would end 12:30, past the 12:00 morning close
+    await expect(
+      ctx.service.book({ ...bookReq, serviceId: 'sesion-extendida', time: '11:00' }),
+    ).rejects.toThrow(/cierre/);
+  });
+
+  it('lists reminders for bookings due within the window', async () => {
+    await ctx.service.book({ ...bookReq, dateISO: '2026-10-20', time: '10:00' }); // 1h ahead
+    const reminders = await ctx.service.dueReminders();
+    expect(reminders).toHaveLength(1);
+    expect(reminders[0].kind).toBe('reminder');
+    expect(reminders[0].simulated).toBe(true);
+    expect(reminders[0].body).toContain('ABC234');
   });
 
   it('builds a 7-day week starting on Monday', async () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BusinessHours } from '../entities/BusinessHours';
 import { AgendaDate } from '../value-objects/AgendaDate';
+import { TimeSlot } from '../value-objects/TimeSlot';
 
 const hours = new BusinessHours(
   {
@@ -32,5 +33,11 @@ describe('BusinessHours', () => {
   it('respects the slot length', () => {
     const half = new BusinessHours({ 3: [{ from: '08:00', to: '09:00' }] }, 30);
     expect(half.slotsFor(wednesday).map((s) => s.toHHMM())).toEqual(['08:00', '08:30']);
+  });
+
+  it('canFit checks a duration stays inside one tramo', () => {
+    expect(hours.canFit(wednesday, TimeSlot.create('09:00'), 90)).toBe(true); // 09:00–10:30 ⊆ 08–11
+    expect(hours.canFit(wednesday, TimeSlot.create('10:00'), 90)).toBe(false); // 10:00–11:30 exceeds 11:00
+    expect(hours.canFit(wednesday, TimeSlot.create('14:00'), 120)).toBe(true); // 14:00–16:00 ⊆ 14–16
   });
 });

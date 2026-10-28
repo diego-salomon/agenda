@@ -2,7 +2,6 @@ import { DomainError } from '../errors';
 import { occupiesSlot } from '../types';
 import { AgendaDate } from '../value-objects/AgendaDate';
 import { TimeSlot } from '../value-objects/TimeSlot';
-import type { BusinessHours } from './BusinessHours';
 import type { Booking, Patient } from './Booking';
 import type { Block } from './Block';
 
@@ -70,10 +69,6 @@ export class DayAggregate {
 
   findByCode(code: string): Booking | null {
     return this._bookings.find((b) => b.code === code) ?? null;
-  }
-
-  availableSlots(hours: BusinessHours): TimeSlot[] {
-    return hours.slotsFor(this.date).filter((slot) => this.isSlotFree(slot));
   }
 
   book(input: BookInput): DayAggregate {

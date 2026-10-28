@@ -21,6 +21,12 @@ interface BlockRow {
   created_at: string;
 }
 
+interface AvailabilityRow {
+  time: string;
+  status: 'booked' | 'blocked';
+  service_id: string | null;
+}
+
 function toBooking(row: BookingRow): Booking {
   return {
     code: row.code,
@@ -43,15 +49,31 @@ function toBlock(row: BlockRow): Block {
   };
 }
 
+function sameBlocks(a: readonly Block[], b: readonly Block[]): boolean {
+  if (a.length !== b.length) return false;
+  const key = (x: Block) => `${x.time}|${x.reason ?? ''}`;
+  const left = a.map(key).sort().join(',');
+  const right = b.map(key).sort().join(',');
+  return left === right;
+}
+
 /**
- * Live adapter. Reads/writes the `bookings` and `blocks` tables scoped to a
- * tenant. Public booking creation is funnelled through the security-definer
- * `create_booking` RPC, which re-checks slot availability server-side (the
- * localStorage adapter can't be raced; Postgres can, so the DB is the final
- * authority). Admin mutations run authenticated under RLS.
+ * Live adapter. Reads/writes `bookings` and `blocks` scoped to a tenant.
  *
- * NOTE: this adapter is wired against the schema in /supabase but has not been
- * executed against a live project in this build — see supabase/README.md.
+ * Who is calling matters under RLS:
+ * - Signed-in admin → reads the real tables (full patient data).
+ * - Anonymous visitor → reads only busy/blocked times through the
+ *   security-definer `availability` RPC (never patient data), and creates
+ *   bookings through the `create_booking` RPC (server re-checks the slot). The
+ *   `availability` RPC returns `service_id` so duration-aware coverage still
+ *   works for the public pages.
+ * - Code lookup (/mi-turno) goes through the `find_booking` RPC, which works for
+ *   anonymous visitors who hold the code.
+ *
+ * NOTE: wired against the schema in /supabase but NOT executed against a live
+ * project in this build. Remaining known gap: cancel-by-code for an anonymous
+ * visitor needs the `cancel_booking` RPC wired through a port method (see
+ * supabase/README.md); admin cancel works under RLS.
  */
 export class SupabaseAgendaRepository implements AgendaRepository {
   private tenantIdCache: string | null = null;
@@ -60,6 +82,11 @@ export class SupabaseAgendaRepository implements AgendaRepository {
     private readonly client: SupabaseClient,
     private readonly tenantSlug: string,
   ) {}
+
+  private async hasSession(): Promise<boolean> {
+    const { data } = await this.client.auth.getSession();
+    return Boolean(data.session);
+  }
 
   private async tenantId(): Promise<string> {
     if (this.tenantIdCache) return this.tenantIdCache;
@@ -75,18 +102,47 @@ export class SupabaseAgendaRepository implements AgendaRepository {
 
   async loadDay(date: AgendaDate): Promise<DayAggregate> {
     const iso = date.toISO();
-    const tenant = await this.tenantId();
-    const [bookings, blocks] = await Promise.all([
-      this.client.from('bookings').select('*').eq('tenant_id', tenant).eq('date', iso),
-      this.client.from('blocks').select('*').eq('tenant_id', tenant).eq('date', iso),
-    ]);
-    if (bookings.error) throw bookings.error;
-    if (blocks.error) throw blocks.error;
-    return DayAggregate.create(
-      date,
-      (bookings.data as BookingRow[]).map(toBooking),
-      (blocks.data as BlockRow[]).map(toBlock),
-    );
+
+    if (await this.hasSession()) {
+      const tenant = await this.tenantId();
+      const [bookings, blocks] = await Promise.all([
+        this.client.from('bookings').select('*').eq('tenant_id', tenant).eq('date', iso),
+        this.client.from('blocks').select('*').eq('tenant_id', tenant).eq('date', iso),
+      ]);
+      if (bookings.error) throw bookings.error;
+      if (blocks.error) throw blocks.error;
+      return DayAggregate.create(
+        date,
+        (bookings.data as BookingRow[]).map(toBooking),
+        (blocks.data as BlockRow[]).map(toBlock),
+      );
+    }
+
+    // Public: availability only, no patient data.
+    const { data, error } = await this.client.rpc('availability', {
+      p_slug: this.tenantSlug,
+      p_date: iso,
+    });
+    if (error) throw error;
+    const bookings: Booking[] = [];
+    const blocks: Block[] = [];
+    for (const row of (data as AvailabilityRow[]) ?? []) {
+      const time = row.time.slice(0, 5);
+      if (row.status === 'blocked') {
+        blocks.push({ date: iso, time, createdAt: '' });
+      } else {
+        bookings.push({
+          code: '',
+          date: iso,
+          time,
+          serviceId: row.service_id ?? '',
+          patient: { name: '', phone: '' },
+          status: 'confirmed',
+          createdAt: '',
+        });
+      }
+    }
+    return DayAggregate.create(date, bookings, blocks);
   }
 
   async save(day: DayAggregate): Promise<void> {
@@ -96,9 +152,9 @@ export class SupabaseAgendaRepository implements AgendaRepository {
     const currentByCode = new Map(current.bookings.map((b) => [b.code, b]));
 
     for (const booking of day.bookings) {
+      if (booking.code === '') continue; // synthetic public-availability row
       const existing = currentByCode.get(booking.code);
       if (!existing) {
-        // New booking: go through the server-side availability re-check.
         const { error } = await this.client.rpc('create_booking', {
           p_slug: this.tenantSlug,
           p_code: booking.code,
@@ -123,33 +179,35 @@ export class SupabaseAgendaRepository implements AgendaRepository {
       }
     }
 
-    // Blocks carry no status, so reconcile by replacing the day's set.
-    const del = await this.client.from('blocks').delete().eq('tenant_id', tenant).eq('date', iso);
-    if (del.error) throw del.error;
-    if (day.blocks.length > 0) {
-      const ins = await this.client.from('blocks').insert(
-        day.blocks.map((b) => ({
-          tenant_id: tenant,
-          date: b.date,
-          time: b.time,
-          reason: b.reason ?? null,
-          created_at: b.createdAt,
-        })),
-      );
-      if (ins.error) throw ins.error;
+    // Blocks (admin-only under RLS): touch them only when they actually changed,
+    // so a public booking on a day that has blocks never attempts a write.
+    if (!sameBlocks(current.blocks, day.blocks)) {
+      const del = await this.client.from('blocks').delete().eq('tenant_id', tenant).eq('date', iso);
+      if (del.error) throw del.error;
+      if (day.blocks.length > 0) {
+        const ins = await this.client.from('blocks').insert(
+          day.blocks.map((b) => ({
+            tenant_id: tenant,
+            date: b.date,
+            time: b.time,
+            reason: b.reason ?? null,
+            created_at: b.createdAt,
+          })),
+        );
+        if (ins.error) throw ins.error;
+      }
     }
   }
 
   async findByCode(code: string): Promise<Booking | null> {
-    const tenant = await this.tenantId();
-    const { data, error } = await this.client
-      .from('bookings')
-      .select('*')
-      .eq('tenant_id', tenant)
-      .eq('code', code)
-      .maybeSingle();
+    // RPC so an anonymous visitor who holds the code can look it up.
+    const { data, error } = await this.client.rpc('find_booking', {
+      p_slug: this.tenantSlug,
+      p_code: code,
+    });
     if (error) throw error;
-    return data ? toBooking(data as BookingRow) : null;
+    const rows = (data as BookingRow[]) ?? [];
+    return rows.length > 0 ? toBooking(rows[0]) : null;
   }
 
   async bookingsBetween(from: AgendaDate, to: AgendaDate): Promise<readonly Booking[]> {

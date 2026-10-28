@@ -16,6 +16,13 @@ export function useAsyncData<T>(fn: () => Promise<T>, deps: unknown[]): AsyncSta
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
 
+  // Clear stale data when the inputs change (but not on a manual reload), so a
+  // consumer never pairs the previous result with the new inputs mid-load.
+  useEffect(() => {
+    setData(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
   useEffect(() => {
     let active = true;
     setLoading(true);

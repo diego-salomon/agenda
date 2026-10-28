@@ -45,4 +45,15 @@ export class BusinessHours {
   containsSlot(date: AgendaDate, slot: TimeSlot): boolean {
     return this.slotsFor(date).some((s) => s.equals(slot));
   }
+
+  /** Does a booking of `durationMinutes` starting at `slot` fit inside one tramo? */
+  canFit(date: AgendaDate, slot: TimeSlot, durationMinutes: number): boolean {
+    const start = slot.minutes;
+    const end = start + durationMinutes;
+    return this.tramosFor(date.weekday()).some((tramo) => {
+      const from = TimeSlot.create(tramo.from).minutes;
+      const to = TimeSlot.create(tramo.to).minutes;
+      return start >= from && end <= to;
+    });
+  }
 }

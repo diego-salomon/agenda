@@ -265,7 +265,9 @@ function Confirmation({ result, onReset }: { result: BookResult; onReset: () => 
   const { brand } = useApp();
   useDocumentHead('Turno confirmado', brand.tagline);
   const { booking, service, notification } = result;
-  const wa = whatsappLink(booking.patient.phone, notification.body);
+  // Open WhatsApp to the business, pre-filled with the booking summary; the
+  // patient taps send themselves — nothing is sent automatically.
+  const wa = whatsappLink(brand.contact.whatsappE164, notification.body);
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6">
@@ -304,8 +306,13 @@ function Confirmation({ result, onReset }: { result: BookResult; onReset: () => 
         Enviar resumen por WhatsApp
       </a>
 
-      <Alert tone="info" title="Notificación simulada">
-        En modo demo no se envía nada. Este es el mensaje que recibiría el paciente:
+      <Alert
+        tone="info"
+        title={notification.simulated ? 'Notificación simulada' : 'Mensaje de confirmación'}
+      >
+        {notification.simulated
+          ? 'En modo demo no se envía nada. Este es el mensaje que recibiría el paciente:'
+          : 'Le enviamos al paciente este mensaje:'}
         <p className="mt-2 rounded bg-surface-2 p-2 text-text">{notification.body}</p>
       </Alert>
 

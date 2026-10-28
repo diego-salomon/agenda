@@ -44,20 +44,50 @@ drop policy if exists blocks_admin_write on blocks;
 create policy blocks_admin_write on blocks for all
   using (is_member(tenant_id)) with check (is_member(tenant_id));
 
--- Public availability: returns only busy times, never patient data.
+-- Public availability: busy/blocked times only, never patient data. Carries
+-- service_id so the client can compute duration-aware coverage.
 create or replace function availability(p_slug text, p_date date)
-returns table (time text, status text)
+returns table (time text, status text, service_id text)
 language sql security definer stable set search_path = public as $$
   with t as (select id from tenants where slug = p_slug)
-  select b.time, 'booked'::text
+  select b.time, 'booked'::text, b.service_id
     from bookings b join t on b.tenant_id = t.id
     where b.date = p_date and b.status in ('confirmed', 'attended')
   union all
-  select bl.time, 'blocked'::text
+  select bl.time, 'blocked'::text, null::text
     from blocks bl join t on bl.tenant_id = t.id
     where bl.date = p_date;
 $$;
 grant execute on function availability(text, date) to anon, authenticated;
+
+-- Public lookup by code (/mi-turno): the code is the secret, so returning the
+-- full row to whoever holds it is fine.
+create or replace function find_booking(p_slug text, p_code text)
+returns setof bookings
+language sql security definer stable set search_path = public as $$
+  select b.*
+    from bookings b join tenants t on b.tenant_id = t.id
+    where t.slug = p_slug and b.code = upper(p_code)
+    limit 1;
+$$;
+grant execute on function find_booking(text, text) to anon, authenticated;
+
+-- Public cancel by code. Flips status, never deletes.
+create or replace function cancel_booking(p_slug text, p_code text)
+returns text
+language plpgsql security definer set search_path = public as $$
+declare
+  v_tenant uuid;
+begin
+  select id into v_tenant from tenants where slug = p_slug;
+  if v_tenant is null then raise exception 'TENANT_NOT_FOUND'; end if;
+  update bookings set status = 'cancelled', cancelled_at = now()
+    where tenant_id = v_tenant and code = upper(p_code) and status in ('confirmed', 'attended');
+  if not found then raise exception 'BOOKING_NOT_FOUND'; end if;
+  return upper(p_code);
+end;
+$$;
+grant execute on function cancel_booking(text, text) to anon, authenticated;
 
 -- Public booking creation with a server-side availability re-check. The partial
 -- unique index is the ultimate guard; this gives a friendlier error first.
@@ -77,6 +107,12 @@ begin
   select id into v_tenant from tenants where slug = p_slug;
   if v_tenant is null then
     raise exception 'TENANT_NOT_FOUND';
+  end if;
+
+  -- Reject slots already in the past (server-local time; see the tz caveat in
+  -- supabase/README.md for businesses in another timezone).
+  if p_date < current_date or (p_date = current_date and p_time::time <= localtime) then
+    raise exception 'SLOT_PAST';
   end if;
 
   if exists (

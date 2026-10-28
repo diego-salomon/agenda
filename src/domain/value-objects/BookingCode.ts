@@ -9,14 +9,18 @@ const CODE = /^[A-HJ-NP-Z2-9]{6}$/;
 export class BookingCode {
   private constructor(readonly value: string) {}
 
+  /** Canonical form for comparison/lookup: trimmed, upper-cased. */
+  static normalize(raw: string): string {
+    return raw.trim().toUpperCase();
+  }
+
   static validate(raw: string): string | null {
-    const value = raw.trim().toUpperCase();
-    if (!CODE.test(value)) return 'Código inválido.';
+    if (!CODE.test(BookingCode.normalize(raw))) return 'Código inválido.';
     return null;
   }
 
   static create(raw: string): BookingCode {
-    const value = raw.trim().toUpperCase();
+    const value = BookingCode.normalize(raw);
     if (!CODE.test(value)) throw new DomainError('Código inválido.');
     return new BookingCode(value);
   }

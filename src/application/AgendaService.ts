@@ -1,5 +1,6 @@
 import {
   AgendaDate,
+  BookingCode,
   BusinessHours,
   DayAggregate,
   DomainError,
@@ -38,6 +39,11 @@ export interface WeekAgenda {
   days: WeekDay[];
 }
 
+export interface DayView {
+  day: DayAggregate;
+  slots: DaySlot[];
+}
+
 export interface BookRequest {
   serviceId: string;
   dateISO: string;
@@ -64,12 +70,21 @@ export interface AgendaServiceDeps {
   notifications: NotificationGateway;
   brand: BrandConfig;
   agenda: AgendaConfig;
+  /** True in demo mode: notifications are simulated, demo-only UI shows. */
+  demoMode: boolean;
 }
+
+const HOUR_MS = 60 * 60 * 1000;
 
 /**
  * The application facade the UI talks to. It owns the orchestration of use
  * cases over the repository port, the clock, the code generator and the
  * notification gateway — and knows nothing about where data is stored.
+ *
+ * Service duration lives in the catalog (config), so duration-aware
+ * availability — a booking occupies its whole [start, start+duration) span,
+ * not just one grid cell — is computed here, while DayAggregate keeps the
+ * exact-slot invariant as a backstop.
  */
 export class AgendaService {
   private readonly hours: BusinessHours;
@@ -90,14 +105,27 @@ export class AgendaService {
     return this.deps.agenda.services.find((s) => s.id === id) ?? null;
   }
 
+  private durationOf(serviceId: string): number {
+    return this.findService(serviceId)?.durationMinutes ?? this.deps.agenda.slotMinutes;
+  }
+
   private slotStart(dateISO: string, time: string): Date {
     const [y, m, d] = dateISO.split('-').map(Number);
-    const slot = TimeSlot.create(time);
-    return new Date(y, m - 1, d, Math.floor(slot.minutes / 60), slot.minutes % 60, 0, 0);
+    const minutes = TimeSlot.create(time).minutes;
+    return new Date(y, m - 1, d, Math.floor(minutes / 60), minutes % 60, 0, 0);
+  }
+
+  /** A grid slot is covered when any active booking's span overlaps its start. */
+  private isCovered(day: DayAggregate, slotMinutes: number): boolean {
+    return day.bookings.some((b) => {
+      if (b.status !== 'confirmed' && b.status !== 'attended') return false;
+      const start = TimeSlot.create(b.time).minutes;
+      return slotMinutes >= start && slotMinutes < start + this.durationOf(b.serviceId);
+    });
   }
 
   private statusFor(day: DayAggregate, dateISO: string, slot: TimeSlot): SlotStatus {
-    if (day.activeBookingAt(slot)) return 'booked';
+    if (this.isCovered(day, slot.minutes)) return 'booked';
     if (day.blockAt(slot)) return 'blocked';
     if (this.slotStart(dateISO, slot.toHHMM()).getTime() <= this.deps.clock.now().getTime()) {
       return 'past';
@@ -105,26 +133,31 @@ export class AgendaService {
     return 'free';
   }
 
+  private slotsFromDay(day: DayAggregate, dateISO: string): DaySlot[] {
+    return this.hours.slotsFor(AgendaDate.create(dateISO)).map((slot) => ({
+      time: slot.toHHMM(),
+      status: this.statusFor(day, dateISO, slot),
+    }));
+  }
+
   async daySlots(dateISO: string): Promise<DaySlots> {
     const date = AgendaDate.create(dateISO);
     const day = await this.deps.repo.loadDay(date);
-    const gridSlots = this.hours.slotsFor(date);
-    return {
-      dateISO,
-      open: gridSlots.length > 0,
-      slots: gridSlots.map((slot) => ({
-        time: slot.toHHMM(),
-        status: this.statusFor(day, dateISO, slot),
-      })),
-    };
+    const slots = this.slotsFromDay(day, dateISO);
+    return { dateISO, open: this.hours.isOpenOn(date), slots };
+  }
+
+  /** The full aggregate plus its slot view, in a single repository load. */
+  async loadDayView(dateISO: string): Promise<DayView> {
+    const day = await this.deps.repo.loadDay(AgendaDate.create(dateISO));
+    return { day, slots: this.slotsFromDay(day, dateISO) };
   }
 
   async weekAgenda(startISO: string): Promise<WeekAgenda> {
     const start = AgendaDate.create(startISO).startOfWeek();
     const days: WeekDay[] = [];
     for (let i = 0; i < 7; i += 1) {
-      const dateISO = start.addDays(i).toISO();
-      const day = await this.daySlots(dateISO);
+      const day = await this.daySlots(start.addDays(i).toISO());
       days.push({ ...day, freeCount: day.slots.filter((s) => s.status === 'free').length });
     }
     return { startISO: start.toISO(), days };
@@ -137,10 +170,24 @@ export class AgendaService {
   private async nextUniqueCode(): Promise<string> {
     for (let i = 0; i < 8; i += 1) {
       const code = this.deps.codes.next();
-      // eslint-disable-next-line no-await-in-loop
       if (!(await this.deps.repo.findByCode(code))) return code;
     }
     throw new DomainError('No se pudo generar un código único, intenta de nuevo.');
+  }
+
+  /** Does `[start, start+duration)` clash with any booking span or block? */
+  private spanIsFree(day: DayAggregate, start: number, duration: number): boolean {
+    const end = start + duration;
+    const bookingClash = day.bookings.some((b) => {
+      if (b.status !== 'confirmed' && b.status !== 'attended') return false;
+      const bStart = TimeSlot.create(b.time).minutes;
+      return start < bStart + this.durationOf(b.serviceId) && bStart < end;
+    });
+    if (bookingClash) return false;
+    return !day.blocks.some((bl) => {
+      const blStart = TimeSlot.create(bl.time).minutes;
+      return start < blStart + this.deps.agenda.slotMinutes && blStart < end;
+    });
   }
 
   async book(request: BookRequest): Promise<BookResult> {
@@ -153,6 +200,9 @@ export class AgendaService {
     if (!this.hours.containsSlot(date, slot)) {
       throw new DomainError('Ese horario está fuera del horario de atención.');
     }
+    if (!this.hours.canFit(date, slot, service.durationMinutes)) {
+      throw new DomainError('No hay tiempo suficiente antes del cierre para ese servicio.');
+    }
     if (this.slotStart(request.dateISO, request.time).getTime() <= this.deps.clock.now().getTime()) {
       throw new DomainError('Ese horario ya pasó, elige otro.');
     }
@@ -161,60 +211,47 @@ export class AgendaService {
     const phone = PhoneNumber.create(request.phone, this.deps.brand.phoneRules);
 
     const day = await this.deps.repo.loadDay(date);
-    const code = await this.nextUniqueCode();
-    const createdAt = this.deps.clock.now().toISOString();
+    if (!this.spanIsFree(day, slot.minutes, service.durationMinutes)) {
+      throw new DomainError('Ese horario ya no está disponible.', 'SLOT_TAKEN');
+    }
 
+    const code = await this.nextUniqueCode();
     const updated = day.book({
       code,
       time: request.time,
       serviceId: service.id,
       patient: { name: name.value, phone: phone.e164 },
-      createdAt,
+      createdAt: this.deps.clock.now().toISOString(),
     });
     await this.deps.repo.save(updated);
 
-    const booking = updated.activeBookingAt(slot)!;
-    const notification = composeNotification({
-      kind: 'confirmation',
-      booking,
-      service,
-      brand: this.deps.brand,
-      agenda: this.deps.agenda,
-      simulated: true,
-    });
-    await this.deps.notifications.send(notification);
-
+    const booking = updated.findByCode(code)!;
+    const notification = this.compose('confirmation', booking, service);
+    await this.notify(notification);
     return { booking, service, notification };
   }
 
   async lookup(rawCode: string): Promise<LookupResult | null> {
-    const booking = await this.deps.repo.findByCode(rawCode.trim().toUpperCase());
+    const booking = await this.deps.repo.findByCode(BookingCode.normalize(rawCode));
     if (!booking) return null;
     return { booking, service: this.findService(booking.serviceId) };
   }
 
   async cancel(rawCode: string): Promise<{ booking: Booking; notification: NotificationMessage }> {
-    const code = rawCode.trim().toUpperCase();
+    const code = BookingCode.normalize(rawCode);
     const existing = await this.deps.repo.findByCode(code);
-    if (!existing) throw new DomainError('No encontramos una reserva con ese código.', 'BOOKING_NOT_FOUND');
+    if (!existing) {
+      throw new DomainError('No encontramos una reserva con ese código.', 'BOOKING_NOT_FOUND');
+    }
 
-    const date = AgendaDate.create(existing.date);
-    const day = await this.deps.repo.loadDay(date);
-    const cancelledAt = this.deps.clock.now().toISOString();
-    const updated = day.cancel(code, cancelledAt);
+    const day = await this.deps.repo.loadDay(AgendaDate.create(existing.date));
+    const updated = day.cancel(code, this.deps.clock.now().toISOString());
     await this.deps.repo.save(updated);
 
     const booking = updated.findByCode(code)!;
-    const service = this.findService(booking.serviceId);
-    const notification = composeNotification({
-      kind: 'cancellation',
-      booking,
-      service: service ?? fallbackService(booking.serviceId),
-      brand: this.deps.brand,
-      agenda: this.deps.agenda,
-      simulated: true,
-    });
-    await this.deps.notifications.send(notification);
+    const service = this.findService(booking.serviceId) ?? fallbackService(booking.serviceId);
+    const notification = this.compose('cancellation', booking, service);
+    await this.notify(notification);
     return { booking, notification };
   }
 
@@ -239,38 +276,62 @@ export class AgendaService {
     await this.deps.repo.save(day.free(time));
   }
 
-  /** Move a booking, within the same day or across days. */
-  async adminMove(code: string, toDateISO: string, toTime: string): Promise<void> {
+  /** Move a booking to another free slot on the same day. */
+  async adminMove(code: string, toTime: string): Promise<void> {
     const existing = await this.deps.repo.findByCode(code);
     if (!existing) throw new DomainError('Reserva no encontrada.', 'BOOKING_NOT_FOUND');
-
-    if (existing.date === toDateISO) {
-      const day = await this.getDay(toDateISO);
-      await this.deps.repo.save(day.moveWithinDay(code, toTime));
-      return;
-    }
-
-    // Cross-day move: place in the destination first, then release the origin,
-    // so a clash on the destination leaves the original booking untouched.
-    const destination = await this.getDay(toDateISO);
-    const withDestination = destination.book({
-      code,
-      time: toTime,
-      serviceId: existing.serviceId,
-      patient: existing.patient,
-      createdAt: existing.createdAt,
-    });
-    const originDay = await this.getDay(existing.date);
-    await this.deps.repo.save(withDestination);
-    await this.deps.repo.save(originDay.cancel(code, this.deps.clock.now().toISOString()));
+    const day = await this.getDay(existing.date);
+    await this.deps.repo.save(day.moveWithinDay(code, toTime));
   }
 
   async resetDemo(): Promise<void> {
     await this.deps.repo.resetDemo();
   }
 
+  /** Reminders for confirmed bookings due within the reminder window. */
+  async dueReminders(now: Date = this.deps.clock.now()): Promise<NotificationMessage[]> {
+    const until = new Date(now.getTime() + this.deps.agenda.reminderLeadHours * HOUR_MS);
+    const bookings = await this.deps.repo.bookingsBetween(
+      AgendaDate.fromDate(now),
+      AgendaDate.fromDate(until),
+    );
+    return bookings
+      .filter((b) => b.status === 'confirmed')
+      .filter((b) => {
+        const t = this.slotStart(b.date, b.time).getTime();
+        return t > now.getTime() && t <= until.getTime();
+      })
+      .map((b) =>
+        this.compose('reminder', b, this.findService(b.serviceId) ?? fallbackService(b.serviceId)),
+      );
+  }
+
   sentNotifications(): readonly NotificationMessage[] {
     return this.deps.notifications.recorded?.() ?? [];
+  }
+
+  private compose(
+    kind: NotificationMessage['kind'],
+    booking: Booking,
+    service: Service,
+  ): NotificationMessage {
+    return composeNotification({
+      kind,
+      booking,
+      service,
+      brand: this.deps.brand,
+      agenda: this.deps.agenda,
+      simulated: this.deps.demoMode,
+    });
+  }
+
+  /** Notifications are best-effort: a send failure must not undo a saved booking. */
+  private async notify(message: NotificationMessage): Promise<void> {
+    try {
+      await this.deps.notifications.send(message);
+    } catch {
+      // swallowed on purpose — the booking is already persisted
+    }
   }
 }
 

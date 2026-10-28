@@ -9,6 +9,7 @@ interface AppContextValue {
   mode: RunMode;
   brand: typeof brand;
   agenda: typeof agenda;
+  signIn?: (email: string, password: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -16,14 +17,18 @@ const AppContext = createContext<AppContextValue | null>(null);
 export function AppProvider({
   service,
   mode,
+  signIn,
   children,
 }: {
   service: AgendaService;
   mode: RunMode;
+  signIn?: (email: string, password: string) => Promise<void>;
   children: ReactNode;
 }) {
   return (
-    <AppContext.Provider value={{ service, mode, brand, agenda }}>{children}</AppContext.Provider>
+    <AppContext.Provider value={{ service, mode, brand, agenda, signIn }}>
+      {children}
+    </AppContext.Provider>
   );
 }
 

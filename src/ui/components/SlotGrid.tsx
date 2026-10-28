@@ -65,10 +65,10 @@ export function SlotGrid({
                   ? 'border-border bg-surface text-text'
                   : 'border-transparent bg-surface-2 text-text-muted line-through',
               )}
-              aria-label={`${slot.time} · ${LABEL[slot.status]}`}
               title={LABEL[slot.status]}
             >
-              {slot.time}
+              <span aria-hidden={!isFree}>{slot.time}</span>
+              {!isFree && <span className="sr-only">{`${slot.time}, ${LABEL[slot.status]}`}</span>}
             </div>
           </li>
         );

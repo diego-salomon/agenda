@@ -6,6 +6,7 @@ export type {
   LookupResult,
   DaySlot,
   DaySlots,
+  DayView,
   WeekDay,
   WeekAgenda,
   SlotStatus,

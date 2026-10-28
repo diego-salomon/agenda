@@ -44,13 +44,13 @@ export function AgendaPage() {
       </header>
 
       <div className="flex items-center justify-between gap-3">
-        <Button variant="secondary" onClick={() => shift(-7)} aria-label="Semana anterior">
+        <Button variant="secondary" onClick={() => shift(-7)}>
           ← Anterior
         </Button>
         <p className="text-center text-sm font-medium first-letter:uppercase text-text-muted">
           {rangeLabel}
         </p>
-        <Button variant="secondary" onClick={() => shift(7)} aria-label="Semana siguiente">
+        <Button variant="secondary" onClick={() => shift(7)}>
           Siguiente →
         </Button>
       </div>

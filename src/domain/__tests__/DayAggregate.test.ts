@@ -1,12 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { DayAggregate } from '../entities/DayAggregate';
-import { BusinessHours } from '../entities/BusinessHours';
 import { AgendaDate } from '../value-objects/AgendaDate';
 import { TimeSlot } from '../value-objects/TimeSlot';
 import { DomainError } from '../errors';
 
 const date = AgendaDate.create('2026-10-28'); // Wednesday
-const hours = new BusinessHours({ 3: [{ from: '08:00', to: '11:00' }] }, 60);
 
 function book(agg: DayAggregate, time: string, code = 'ABC234') {
   return agg.book({
@@ -78,12 +76,6 @@ describe('DayAggregate', () => {
     let agg = book(DayAggregate.create(date), '09:00', 'ABC234');
     agg = book(agg, '10:00', 'XYZ567');
     expect(() => agg.moveWithinDay('ABC234', '10:00')).toThrow(DomainError);
-  });
-
-  it('computes available slots against hours, bookings and blocks', () => {
-    let agg = book(DayAggregate.create(date), '08:00');
-    agg = agg.block('10:00', undefined, '2026-10-20T10:00:00.000Z');
-    expect(agg.availableSlots(hours).map((s) => s.toHHMM())).toEqual(['09:00']);
   });
 
   it('rejects construction that violates the one-active-booking invariant', () => {

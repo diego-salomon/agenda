@@ -9,47 +9,43 @@ import { SupabaseNotificationGateway } from '@/infrastructure/notifications/supa
 
 export type RunMode = 'demo' | 'live';
 
+export interface App {
+  service: AgendaService;
+  mode: RunMode;
+  /** Live admin sign-in (Supabase Auth). Undefined in demo mode. */
+  signIn?: (email: string, password: string) => Promise<void>;
+}
+
 export function resolveMode(): RunMode {
   return import.meta.env.VITE_MODE === 'live' ? 'live' : 'demo';
 }
 
 /**
- * Composition root. This is the ONLY place that knows which adapters are in
- * play. Everything above consumes the AgendaService and is identical in both
- * modes — that is what makes the backend a drop-in. Importing the Supabase
- * modules is side-effect-free; the client is built only when mode === 'live'.
+ * Composition root — the ONLY place that knows which adapters are in play.
+ * Everything above consumes the AgendaService and is identical in both modes.
  */
-export function buildAgendaService(): { service: AgendaService; mode: RunMode } {
+export function buildApp(): App {
   const mode = resolveMode();
+  const shared = {
+    clock: systemClock,
+    codes: bookingCodeGenerator,
+    brand,
+    agenda,
+    demoMode: mode === 'demo',
+  };
 
   if (mode === 'live') {
     const client = getSupabaseClient();
     const repo = new SupabaseAgendaRepository(client, import.meta.env.VITE_TENANT_SLUG ?? 'default');
     const notifications = new SupabaseNotificationGateway(client);
-    return {
-      service: new AgendaService({
-        repo,
-        clock: systemClock,
-        codes: bookingCodeGenerator,
-        notifications,
-        brand,
-        agenda,
-      }),
-      mode,
+    const signIn = async (email: string, password: string) => {
+      const { error } = await client.auth.signInWithPassword({ email, password });
+      if (error) throw error;
     };
+    return { service: new AgendaService({ ...shared, repo, notifications }), mode, signIn };
   }
 
   const repo = new LocalStorageAgendaRepository(window.localStorage, systemClock);
   const notifications = new DemoNotificationGateway();
-  return {
-    service: new AgendaService({
-      repo,
-      clock: systemClock,
-      codes: bookingCodeGenerator,
-      notifications,
-      brand,
-      agenda,
-    }),
-    mode,
-  };
+  return { service: new AgendaService({ ...shared, repo, notifications }), mode };
 }

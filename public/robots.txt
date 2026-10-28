@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Add a Sitemap line with your deployed origin, e.g.:
+# Sitemap: https://your-domain.example/sitemap.xml
