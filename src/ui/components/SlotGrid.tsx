@@ -43,6 +43,7 @@ export function SlotGrid({
                 aria-pressed={isSelected}
                 className={cn(
                   common,
+                  'transition duration-[var(--dur-fast)] ease-[var(--ease-out)] active:scale-[0.97]',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                   isSelected
                     ? 'border-brand bg-brand text-brand-contrast'

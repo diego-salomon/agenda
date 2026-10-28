@@ -23,8 +23,14 @@
   --success-soft: #dcfce7;
   --danger: #b42318;
   --danger-soft: #fee4e2;
+  --danger-contrast: #ffffff;
   --warning: #92610a;
   --warning-soft: #fef0c7;
+
+  /* Motion tokens */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
 
   --radius-sm: 0.5rem;
   --radius: 0.875rem;
@@ -56,6 +62,7 @@
     --success-soft: #0f3d27;
     --danger: #ff6b6b;
     --danger-soft: #3f1515;
+    --danger-contrast: #0b1020;
     --warning: #e0b64a;
     --warning-soft: #3a2f0d;
   }
@@ -74,6 +81,7 @@
   --success-soft: #0f3d27;
   --danger: #ff6b6b;
   --danger-soft: #3f1515;
+  --danger-contrast: #0b1020;
   --warning: #e0b64a;
   --warning-soft: #3a2f0d;
 }
@@ -93,6 +101,7 @@
   --color-success-soft: var(--success-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-danger-contrast: var(--danger-contrast);
   --color-warning: var(--warning);
   --color-warning-soft: var(--warning-soft);
   --color-ring: var(--ring);
@@ -179,7 +188,7 @@
 }
 
 .pop-in {
-  animation: pop-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: pop-in 0.5s var(--ease-out) both;
 }
 
 /* A scroll region that stays scrollable but hides its bar (e.g. the mobile nav). */
@@ -188,4 +197,27 @@
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Each booking step settling in as it is disclosed (sequential, not decorative). */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.reveal {
+  animation: reveal var(--dur) var(--ease-out) both;
+}
+
+/* Honor reduced transparency: make the translucent chrome solid. */
+@media (prefers-reduced-transparency: reduce) {
+  .site-chrome {
+    background: var(--surface) !important;
+    backdrop-filter: none !important;
+  }
 }

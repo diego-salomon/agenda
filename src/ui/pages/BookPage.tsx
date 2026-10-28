@@ -118,7 +118,7 @@ export function BookPage() {
 
       {/* Step 2: day */}
       {service && (
-        <section aria-labelledby="step-day" className="flex flex-col gap-3">
+        <section aria-labelledby="step-day" className="reveal flex flex-col gap-3">
           <StepTitle id="step-day" n={2} title="Elige el día" />
           <ul className="flex flex-wrap gap-2" role="list">
             {openDays.map((iso) => {
@@ -133,6 +133,7 @@ export function BookPage() {
                     aria-pressed={active}
                     className={cn(
                       'flex min-h-16 w-16 flex-col items-center justify-center rounded-md border text-sm font-semibold [&>span]:first-letter:uppercase',
+                      'transition duration-[var(--dur-fast)] ease-[var(--ease-out)] active:scale-[0.97]',
                       'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                       active
                         ? 'border-brand bg-brand text-brand-contrast'
@@ -153,7 +154,7 @@ export function BookPage() {
 
       {/* Step 3: time */}
       {service && dateISO && (
-        <section aria-labelledby="step-time" className="flex flex-col gap-3">
+        <section aria-labelledby="step-time" className="reveal flex flex-col gap-3">
           <StepTitle id="step-time" n={3} title="Elige la hora" />
           {day.loading && <Spinner />}
           {day.error && <Alert tone="danger">{day.error}</Alert>}
@@ -166,7 +167,7 @@ export function BookPage() {
 
       {/* Step 4: details */}
       {service && dateISO && time && (
-        <section aria-labelledby="step-details" className="flex flex-col gap-4">
+        <section aria-labelledby="step-details" className="reveal flex flex-col gap-4">
           <StepTitle id="step-details" n={4} title="Tus datos" />
           <Card className="flex flex-col gap-4 p-4">
             <p className="text-sm text-text-muted">
@@ -237,7 +238,8 @@ function ServiceCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        'flex h-full w-full flex-col overflow-hidden rounded-lg border bg-surface text-left transition duration-200',
+        'flex h-full w-full flex-col overflow-hidden rounded-lg border bg-surface text-left',
+        'transition duration-[var(--dur)] ease-[var(--ease-out)] active:scale-[0.99]',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
         selected
           ? 'border-brand ring-2 ring-brand'
@@ -249,16 +251,18 @@ function ServiceCard({
         alt={service.imageAlt}
         width={service.imageWidth}
         height={service.imageHeight}
-        className="aspect-[4/3] w-full object-cover"
+        className="aspect-[16/9] w-full object-cover"
         loading="lazy"
       />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-text">{service.name}</h3>
+          <h3 className="text-base font-semibold text-text">{service.name}</h3>
           <Badge tone="muted">{formatDuration(service.durationMinutes)}</Badge>
         </div>
         <p className="flex-1 text-sm text-text-muted">{service.summary}</p>
-        <p className="font-semibold text-brand">{formatCurrency(service.price, locale, currency)}</p>
+        <p className="text-lg font-bold text-brand">
+          {formatCurrency(service.price, locale, currency)}
+        </p>
       </div>
     </button>
   );
