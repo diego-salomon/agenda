@@ -288,22 +288,52 @@ export class AgendaService {
     await this.deps.repo.resetDemo();
   }
 
-  /** Reminders for confirmed bookings due within the reminder window. */
-  async dueReminders(now: Date = this.deps.clock.now()): Promise<NotificationMessage[]> {
+  /** Confirmed bookings whose start falls inside the reminder window. */
+  private async dueBookings(now: Date, onlyUnreminded: boolean): Promise<Booking[]> {
     const until = new Date(now.getTime() + this.deps.agenda.reminderLeadHours * HOUR_MS);
     const bookings = await this.deps.repo.bookingsBetween(
       AgendaDate.fromDate(now),
       AgendaDate.fromDate(until),
     );
-    return bookings
-      .filter((b) => b.status === 'confirmed')
-      .filter((b) => {
-        const t = this.slotStart(b.date, b.time).getTime();
-        return t > now.getTime() && t <= until.getTime();
-      })
-      .map((b) =>
-        this.compose('reminder', b, this.findService(b.serviceId) ?? fallbackService(b.serviceId)),
-      );
+    return bookings.filter((b) => {
+      if (b.status !== 'confirmed') return false;
+      if (onlyUnreminded && b.remindedAt) return false;
+      const t = this.slotStart(b.date, b.time).getTime();
+      return t > now.getTime() && t <= until.getTime();
+    });
+  }
+
+  /** Pending reminders: due within the window and not yet sent (preview/queue). */
+  async dueReminders(now: Date = this.deps.clock.now()): Promise<NotificationMessage[]> {
+    const bookings = await this.dueBookings(now, true);
+    return bookings.map((b) =>
+      this.compose('reminder', b, this.findService(b.serviceId) ?? fallbackService(b.serviceId)),
+    );
+  }
+
+  /**
+   * Send a reminder for every due booking not yet reminded, then mark it so a
+   * later run never sends twice. This is the job a scheduler runs — daily in
+   * production via the Supabase `reminders` function (supabase/functions/reminders);
+   * in demo mode the gateway records each message as "simulado". A send failure
+   * leaves that booking un-reminded so the next run retries it. Returns the
+   * messages actually sent.
+   */
+  async sendDueReminders(now: Date = this.deps.clock.now()): Promise<NotificationMessage[]> {
+    const sent: NotificationMessage[] = [];
+    for (const booking of await this.dueBookings(now, true)) {
+      const service = this.findService(booking.serviceId) ?? fallbackService(booking.serviceId);
+      const message = this.compose('reminder', booking, service);
+      try {
+        await this.deps.notifications.send(message);
+      } catch {
+        continue; // retried on the next run
+      }
+      const day = await this.deps.repo.loadDay(AgendaDate.create(booking.date));
+      await this.deps.repo.save(day.markReminded(booking.code, now.toISOString()));
+      sent.push(message);
+    }
+    return sent;
   }
 
   sentNotifications(): readonly NotificationMessage[] {

@@ -12,6 +12,7 @@ interface BookingRow {
   status: BookingStatus;
   created_at: string;
   cancelled_at: string | null;
+  reminded_at: string | null;
 }
 
 interface BlockRow {
@@ -37,6 +38,7 @@ function toBooking(row: BookingRow): Booking {
     status: row.status,
     createdAt: row.created_at,
     ...(row.cancelled_at ? { cancelledAt: row.cancelled_at } : {}),
+    ...(row.reminded_at ? { remindedAt: row.reminded_at } : {}),
   };
 }
 
@@ -165,13 +167,18 @@ export class SupabaseAgendaRepository implements AgendaRepository {
           p_phone: booking.patient.phone,
         });
         if (error) throw error;
-      } else if (existing.status !== booking.status || existing.time !== booking.time) {
+      } else if (
+        existing.status !== booking.status ||
+        existing.time !== booking.time ||
+        existing.remindedAt !== booking.remindedAt
+      ) {
         const { error } = await this.client
           .from('bookings')
           .update({
             status: booking.status,
             time: booking.time,
             cancelled_at: booking.cancelledAt ?? null,
+            reminded_at: booking.remindedAt ?? null,
           })
           .eq('tenant_id', tenant)
           .eq('code', booking.code);

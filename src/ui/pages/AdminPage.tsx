@@ -121,6 +121,7 @@ function AdminPanel() {
 
   const [working, setWorking] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [remindResult, setRemindResult] = useState<string | null>(null);
 
   async function run(key: string, action: () => Promise<void>) {
     setWorking(key);
@@ -276,12 +277,34 @@ function AdminPanel() {
       )}
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold text-text">
-          Recordatorios (próximas {agenda.reminderLeadHours}&nbsp;h)
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-text">
+            Recordatorios (próximas {agenda.reminderLeadHours}&nbsp;h)
+          </h2>
+          {reminders.data && reminders.data.length > 0 && (
+            <Button
+              variant="secondary"
+              onClick={() =>
+                void run('send-reminders', async () => {
+                  const sent = await service.sendDueReminders();
+                  const verb = mode === 'demo' ? 'simulado' : 'enviado';
+                  setRemindResult(
+                    sent.length === 0
+                      ? 'No hay recordatorios pendientes por enviar.'
+                      : `${sent.length} recordatorio${sent.length === 1 ? '' : 's'} ${verb}${sent.length === 1 ? '' : 's'}.`,
+                  );
+                })
+              }
+              disabled={working === 'send-reminders'}
+            >
+              {working === 'send-reminders' ? <Spinner label="Enviando…" /> : 'Enviar recordatorios'}
+            </Button>
+          )}
+        </div>
+        {remindResult && <Alert tone="info">{remindResult}</Alert>}
         {reminders.loading && <Spinner />}
         {reminders.data && reminders.data.length === 0 && (
-          <p className="text-sm text-text-muted">No hay turnos en las próximas horas.</p>
+          <p className="text-sm text-text-muted">No hay recordatorios pendientes.</p>
         )}
         {reminders.data && reminders.data.length > 0 && (
           <ul className="flex flex-col gap-2" role="list">

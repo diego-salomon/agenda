@@ -143,6 +143,22 @@ describe('AgendaService', () => {
     expect(reminders[0].body).toContain('ABC234');
   });
 
+  it('sends due reminders once, then is idempotent', async () => {
+    await ctx.service.book({ ...bookReq, dateISO: '2026-10-20', time: '10:00' }); // 1h ahead
+    const sent = await ctx.service.sendDueReminders();
+    expect(sent).toHaveLength(1);
+    expect(sent[0].kind).toBe('reminder');
+    const day = await ctx.service.getDay('2026-10-20');
+    expect(day.bookings[0].remindedAt).toBeTruthy();
+    // a second run sends nothing — the booking is already reminded
+    expect(await ctx.service.sendDueReminders()).toHaveLength(0);
+  });
+
+  it('does not remind bookings outside the reminder window', async () => {
+    await ctx.service.book(bookReq); // WED, 8 days ahead → outside the 24h window
+    expect(await ctx.service.sendDueReminders()).toHaveLength(0);
+  });
+
   it('builds a 7-day week starting on Monday', async () => {
     const week = await ctx.service.weekAgenda(WED);
     expect(week.startISO).toBe('2026-10-26'); // Monday

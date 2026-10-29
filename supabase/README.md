@@ -13,9 +13,17 @@ the one remaining step to run the app on a real backend.
 - `migrations/0002_rls_and_rpc.sql` — RLS policies plus two security-definer
   RPCs: `availability(slug, date)` (public, busy times only — never patient
   data) and `create_booking(...)` (public, re-checks availability server-side).
+- `migrations/0003_reminders.sql` — adds `bookings.reminded_at` (so a reminder
+  is sent at most once) and the index the scheduler reads.
 - `seed.sql` — a `default` tenant and the demo service catalog.
 - `functions/notify/` — the Edge Function that fans notifications out to an
   SMS/WhatsApp provider. The provider call is a stub; wire your own in `deliver()`.
+- `functions/reminders/` — the scheduled job that sends due confirmation
+  reminders (the server-side mirror of `AgendaService.sendDueReminders`). It
+  finds confirmed bookings inside the reminder window with `reminded_at` null,
+  calls `notify` for each, and stamps `reminded_at`.
+- `functions/.env.example` — the function secrets to fill in (reminder window,
+  tenant, and your provider keys).
 
 ## Apply it
 
@@ -23,8 +31,33 @@ the one remaining step to run the app on a real backend.
 supabase start                      # or link an existing project
 supabase db push                    # runs migrations/*.sql
 psql "$DATABASE_URL" -f supabase/seed.sql
+supabase secrets set --env-file supabase/functions/.env   # provider keys, reminder window
 supabase functions deploy notify
+supabase functions deploy reminders
 ```
+
+## Confirmation reminders
+
+`functions/reminders` sends a reminder for every confirmed booking whose start
+is within `REMINDER_LEAD_HOURS` and that hasn't been reminded yet, then stamps
+`reminded_at` so it never sends twice. Schedule it to run a few times a day — in
+the Supabase dashboard (Edge Functions → reminders → Schedules) or with
+`pg_cron`:
+
+```sql
+select cron.schedule(
+  'reminders-hourly', '0 * * * *',
+  $$ select net.http_post(
+       url := 'https://<project>.functions.supabase.co/reminders',
+       headers := '{"Authorization":"Bearer <service-role-key>"}'::jsonb
+     ) $$
+);
+```
+
+Fill `supabase/functions/.env` from `.env.example` first (reminder window,
+tenant slug, and your SMS/WhatsApp provider keys). The reminder copy lives in
+`functions/reminders/index.ts`; keep it in sync with the `reminder` template in
+`src/config/agenda.config.ts`.
 
 ## Point the app at it
 

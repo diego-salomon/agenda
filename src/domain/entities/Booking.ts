@@ -15,4 +15,5 @@ export interface Booking {
   status: BookingStatus;
   createdAt: string; // ISO timestamp
   cancelledAt?: string; // ISO timestamp, set when cancelled
+  remindedAt?: string; // ISO timestamp, set when a confirmation reminder was sent
 }

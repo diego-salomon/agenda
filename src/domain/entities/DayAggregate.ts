@@ -115,6 +115,12 @@ export class DayAggregate {
     return new DayAggregate(this.date, bookings, this._blocks);
   }
 
+  /** Record that a confirmation reminder was sent for a booking (idempotent). */
+  markReminded(code: string, at: string): DayAggregate {
+    const bookings = this._bookings.map((b) => (b.code === code ? { ...b, remindedAt: at } : b));
+    return new DayAggregate(this.date, bookings, this._blocks);
+  }
+
   /** Move a booking to another slot within the same day. */
   moveWithinDay(code: string, toTime: string): DayAggregate {
     const target = this._bookings.find((b) => b.code === code && occupiesSlot(b.status));
