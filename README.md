@@ -8,9 +8,8 @@ panel. The **same code** runs two ways, chosen by one env var:
   example data. For sales demos and portfolio.
 - **live** — a real Supabase backend (Postgres + Auth + RLS).
 
-**Live demo:** `https://<user>.github.io/agenda/` · **Landing:** `…/plantilla`
-_(both publish on push — see [Deploy](#deploy); fill in `<user>` once you create
-the repo)._
+**Live demo:** `https://diego-salomon.github.io/agenda/` · **Landing:** `…/plantilla`
+_(both publish on push — see [Deploy](#deploy))._
 
 ![Agenda booking screen](docs/screenshot.jpg)
 

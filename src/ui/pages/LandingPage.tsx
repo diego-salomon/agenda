@@ -14,9 +14,8 @@ import { CheckIcon, MonitorIcon, DatabaseIcon, SlidersIcon } from '../components
  * chrome and seed data are the example brand it ships with.
  */
 
-// The public repo, shown as "Ver el código" once set. Fill it in after you
-// create the repo on GitHub, e.g. 'https://github.com/<usuario>/agenda'.
-const REPO_URL = '';
+// The public repo, shown as "Ver el código" once set.
+const REPO_URL = 'https://github.com/diego-salomon/agenda';
 
 // A static day used only for the hero preview — all four slot states on screen.
 const PREVIEW_SLOTS: DaySlot[] = [
