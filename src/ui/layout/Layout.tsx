@@ -73,6 +73,9 @@ export function Layout({ children }: { children: ReactNode }) {
             <Link to="/centro" className="hover:text-text">
               {brand.contact.phoneDisplay}
             </Link>
+            <Link to="/plantilla" className="hover:text-text">
+              La plantilla
+            </Link>
             <Link to="/admin" className="hover:text-text">
               Administración
             </Link>

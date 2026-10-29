@@ -81,3 +81,21 @@ export function ChatIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function DatabaseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <ellipse cx="12" cy="5" rx="8" ry="3" />
+      <path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5" />
+      <path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
+    </Svg>
+  );
+}
+
+export function SlidersIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+    </Svg>
+  );
+}

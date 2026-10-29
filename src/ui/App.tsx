@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Layout } from './layout/Layout';
 import { BookPage } from './pages/BookPage';
+import { LandingPage } from './pages/LandingPage';
 import { AgendaPage } from './pages/AgendaPage';
 import { MyBookingPage } from './pages/MyBookingPage';
 import { AdminPage } from './pages/AdminPage';
@@ -13,6 +14,7 @@ export function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<BookPage />} />
+          <Route path="/plantilla" element={<LandingPage />} />
           <Route path="/agenda" element={<AgendaPage />} />
           <Route path="/mi-turno" element={<MyBookingPage />} />
           <Route path="/admin" element={<AdminPage />} />
