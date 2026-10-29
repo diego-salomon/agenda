@@ -1,18 +1,13 @@
 import type { Service, WeeklyHours, PhoneRules } from '@/domain';
 
-/** One color scheme (light or dark) expressed as the brand's overridable hues. */
-export interface PaletteScheme {
+/** The brand's overridable hues. */
+export interface BrandPalette {
   /** Primary brand color (buttons, highlights). */
   brand: string;
   /** Readable text/icon color on top of `brand`. */
   brandContrast: string;
   /** Secondary accent used sparingly. */
   accent: string;
-}
-
-export interface BrandPalette {
-  light: PaletteScheme;
-  dark: PaletteScheme;
 }
 
 export interface BrandContact {

@@ -33,10 +33,7 @@ export const brand: BrandConfig = {
     { label: 'Facebook', href: 'https://facebook.com/estudioaurora.example' },
   ],
 
-  palette: {
-    light: { brand: '#2f5bea', brandContrast: '#ffffff', accent: '#0f9d8f' },
-    dark: { brand: '#7d97ff', brandContrast: '#0b1020', accent: '#2dd4bf' },
-  },
+  palette: { brand: '#2f5bea', brandContrast: '#ffffff', accent: '#0f9d8f' },
 
   // Defaults suited to the es-PY locale; tune per client.
   phoneRules: { minDigits: 9, maxDigits: 10, defaultCountryCode: '+595' },

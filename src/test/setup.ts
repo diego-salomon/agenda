@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-// jsdom doesn't implement matchMedia; the theme + reduced-motion hooks read it.
+// jsdom doesn't implement matchMedia; some components/libraries read it.
 if (!window.matchMedia) {
   window.matchMedia = (query: string): MediaQueryList =>
     ({

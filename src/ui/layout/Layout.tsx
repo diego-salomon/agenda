@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
-import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/cn';
 
 const NAV = [
@@ -55,7 +54,6 @@ export function Layout({ children }: { children: ReactNode }) {
                 {item.label}
               </NavLink>
             ))}
-            <ThemeToggle />
           </nav>
         </div>
       </header>

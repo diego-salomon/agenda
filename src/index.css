@@ -1,8 +1,7 @@
 @import 'tailwindcss';
 
 /* ------------------------------------------------------------------ *
- * Design tokens. Semantic CSS variables defined once, flipped for dark
- * mode by OS preference and overridable with [data-theme]. Brand hues
+ * Design tokens. Semantic CSS variables defined once. Brand hues
  * (--brand / --brand-contrast / --accent) are injected at runtime from
  * brand.config.ts, so the values here are only fallbacks.
  * ------------------------------------------------------------------ */
@@ -40,50 +39,10 @@
   --shadow: 0 12px 32px -14px rgba(16, 24, 40, 0.28);
   --lift: 0 16px 40px -18px rgba(16, 24, 40, 0.34);
 
-  color-scheme: light dark;
+  color-scheme: light;
   /* Theme native form controls (checkbox, radio, date picker, select) and caret. */
   accent-color: var(--brand);
   caret-color: var(--brand);
-}
-
-/* Dark values, shared by OS-preference and explicit opt-in. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --brand: #7d97ff;
-    --brand-contrast: #0b1020;
-    --accent: #2dd4bf;
-    --bg: #0b1020;
-    --surface: #121a2e;
-    --surface-2: #1b2540;
-    --text: #eef2fb;
-    --text-muted: #9aa6c0;
-    --border: #273150;
-    --success: #4ade80;
-    --success-soft: #0f3d27;
-    --danger: #ff6b6b;
-    --danger-soft: #3f1515;
-    --danger-contrast: #0b1020;
-    --warning: #e0b64a;
-    --warning-soft: #3a2f0d;
-  }
-}
-:root[data-theme='dark'] {
-  --brand: #7d97ff;
-  --brand-contrast: #0b1020;
-  --accent: #2dd4bf;
-  --bg: #0b1020;
-  --surface: #121a2e;
-  --surface-2: #1b2540;
-  --text: #eef2fb;
-  --text-muted: #9aa6c0;
-  --border: #273150;
-  --success: #4ade80;
-  --success-soft: #0f3d27;
-  --danger: #ff6b6b;
-  --danger-soft: #3f1515;
-  --danger-contrast: #0b1020;
-  --warning: #e0b64a;
-  --warning-soft: #3a2f0d;
 }
 
 /* Expose tokens to Tailwind utilities (bg-surface, text-brand, rounded-lg...). */
