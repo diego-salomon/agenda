@@ -1,166 +1,98 @@
-# Agenda
+<div align="center">
 
-White-label appointment-booking web app. Patients book a session from their
-phone against a live availability grid; the business runs the week from an admin
-panel. The **same code** runs two ways, chosen by one env var:
+# 📅 Agenda
 
-- **demo** (default) — everything in the browser on `localStorage`, seeded with
-  example data. For sales demos and portfolio.
-- **live** — a real Supabase backend (Postgres + Auth + RLS).
+### A white-label appointment-booking app: patients book from their phone against a live availability grid, and the business runs the week from an admin panel.
 
-**Live demo:** `https://diego-salomon.github.io/agenda/` · **Landing:** `…/plantilla`
-_(both publish on push — see [Deploy](#deploy))._
+[![React](https://img.shields.io/badge/React-61DAFB?logo=react&logoColor=white&style=flat-square)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white&style=flat-square)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white&style=flat-square)](https://vite.dev)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white&style=flat-square)](https://tailwindcss.com)
+[![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white&style=flat-square)](https://supabase.com)
+[![Tested](https://img.shields.io/badge/tested-Vitest_%2B_Playwright-729B1B?logo=playwright&logoColor=white&style=flat-square)](#how-its-built)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-![Agenda booking screen](docs/screenshot.jpg)
+### [▶  Try the live demo](https://diego-salomon.github.io/agenda/)
+
+<sub>Runs entirely in your browser. No sign-up, no backend, pre-loaded with example data.</sub>
+
+<br>
+
+<img src="docs/assets/grid.png" width="840" alt="The week's availability: each day shows its time slots, with taken ones crossed out, free ones highlighted, and a badge for full, open, or closed days." />
+
+</div>
+
+---
+
+## What it does
+
+A booking tool a small appointment-based business can hand to its clients:
+
+- **Patients book in under a minute**, from a phone, against a live availability grid. No account, just a confirmation code they keep.
+- **The business runs its week** from an admin panel: see the day, cancel or move a booking, mark it attended, and block or free slots.
+- **The grid stays honest.** Taken slots are crossed out, free ones stand out, and each day shows full, how many are open, or closed.
+
+## Who it's for
+
+- **Small appointment-based businesses** (a studio, a clinic, a salon) that want online booking without paying for bespoke software.
+- **Freelancers and agencies** who set these up for clients and want a finished, branded booking app to ship by editing two files.
+
+## What it looks like
+
+<div align="center">
+<table>
+<tr>
+<td align="center" width="60%"><img src="docs/assets/book.png" alt="The booking screen: pick a service, each with its price and length" /><br><sub>Pick a service and a slot</sub></td>
+<td align="center" width="40%"><img src="docs/assets/mobile.png" alt="The same booking flow on a phone" /><br><sub>Built for the phone</sub></td>
+</tr>
+</table>
+</div>
+
+## Make it yours (white-label)
+
+Everything client-specific lives in **two files**. No brand string is hard-coded in a component, and every currency and date is formatted from the locale and currency.
+
+- [`src/config/brand.config.ts`](src/config/brand.config.ts) — name, tagline, logo, palette, locale, currency, contact, socials, phone rules.
+- [`src/config/agenda.config.ts`](src/config/agenda.config.ts) — the services catalog, opening hours, and notification copy.
+
+Fill those in, set the palette, and `pnpm dev` shows the client's full working demo.
+
+## How it's built
+
+Clean architecture, layered so the backend sits behind a single port. The domain and application layers are pure and unit-tested, with no framework and no I/O.
+
+```
+src/domain/          pure business rules, no I/O, unit-tested
+src/application/     use cases over the AgendaRepository port (the backend seam)
+src/infrastructure/  adapters: localStorage (demo), Supabase (live), notifications
+src/ui/              React screens, identical in both modes
+src/app/container.ts the only place that picks adapters, by VITE_MODE
+```
+
+The **same code runs two ways**, chosen by one env variable:
+
+- **Demo mode** (`VITE_MODE=demo`, default): everything in the browser on `localStorage`, pre-seeded. For sales demos and portfolios.
+- **Live mode** (`VITE_MODE=live`): a real [Supabase](https://supabase.com) backend (Postgres, Auth, Row Level Security).
+
+Switching modes swaps adapters in `container.ts` and changes nothing above `src/infrastructure`.
+
+## Quick start
 
 ```bash
 pnpm install
 pnpm dev          # demo mode, http://localhost:5173
+```
+
+A full working demo on `localStorage`, no backend needed.
+
+```bash
 pnpm test         # unit tests (domain + application + infra)
 pnpm test:e2e     # Playwright, desktop + mobile
 pnpm build        # typecheck + production build
 ```
 
-## Why the backend is a drop-in
+---
 
-The code is layered so the backend sits behind a single port:
-
-```
-src/domain/         pure business rules, no I/O, unit-tested
-src/application/     use cases over the AgendaRepository port (the backend seam)
-src/infrastructure/  adapters: localStorage (demo) · Supabase (live) · notifications
-src/ui/              React screens — identical in both modes
-src/app/container.ts the ONLY place that picks adapters, by VITE_MODE
-```
-
-Nothing above `src/infrastructure` knows where data lives. Switching modes swaps
-adapters in `container.ts` and changes nothing else.
-
-## Two files to white-label
-
-Everything client-specific lives in exactly two files — no brand strings in
-components, all currency/date formatting from locale + currency:
-
-- [`src/config/brand.config.ts`](src/config/brand.config.ts) — name, tagline,
-  logo, palette, locale, currency, contact, socials, phone rules.
-- [`src/config/agenda.config.ts`](src/config/agenda.config.ts) — services
-  catalog, opening hours, notification copy.
-
-To rebrand: edit those two files (and the palette). `pnpm dev` then shows a full
-working demo on localStorage.
-
-## Screens
-
-| Route | What |
-|-------|------|
-| `/` | Book: service → day → free time → details → **Confirmar turno** (code + WhatsApp deep link) |
-| `/agenda` | Public weekly free/busy grid, read-only |
-| `/mi-turno` | Look up / cancel by booking code |
-| `/admin` | Admin: cancel, move, mark attended, block/free slots, reset demo (demo: client-side gate labelled *not real security*; live: Supabase Auth) |
-| `/centro` | Business info: services, hours, address, Maps link, socials — all from config |
-| `/plantilla` | Landing that presents the template: hero with the live slot grid, how it works, the two modes, white-label, honest scope |
-
-## Domain model
-
-`Service`, `BusinessHours` (per-weekday tramos + uniform slot grid), `Booking`
-(code, date, time, serviceId, patient, status, timestamps), `Block` (staff hold),
-and the aggregate root **`DayAggregate`** — the whole day is the load/save unit,
-so the invariant **one active booking per slot** is always checked against the
-complete picture. Cancelling flips the status; it never deletes. Value objects:
-`AgendaDate`, `TimeSlot`, `PhoneNumber` (rules from the brand locale, not
-country-hardcoded), `PatientName`, `BookingCode`.
-
-**Note on the status enum:** the brief lists `blocked` among booking statuses;
-here a block is modelled as a separate `Block` entity (the repository exposes
-`blocksBetween`), so `BookingStatus` is `confirmed | cancelled | attended`. This
-keeps the one-booking-per-slot invariant reasoning only about patients.
-
-**Note on async:** `AgendaRepository` returns Promises (the brief sketches it
-sync). A network backend can't be wrapped synchronously; async makes the
-Supabase adapter a genuine drop-in and the localStorage adapter just resolves
-immediately.
-
-## Notifications
-
-Confirmation (on book), reminder, cancellation — copy templated in
-`agenda.config.ts`, sent through the `NotificationGateway` port.
-`AgendaService.sendDueReminders()` sends a reminder for every confirmed booking
-inside the `reminderLeadHours` window not yet reminded, then stamps
-`booking.remindedAt` so it never sends twice; the admin panel lists what is
-pending and triggers it. **Demo:** recorded on screen, labelled *simulado*,
-nothing leaves the browser. **Live:** the `notify` Edge Function fans each
-message out to an SMS/WhatsApp provider (stubbed adapter), and the `reminders`
-Edge Function runs that send on a schedule (cron) — see
-[`supabase/README.md`](supabase/README.md). No email, no payments.
-
-The WhatsApp "Enviar resumen" button is a plain `wa.me` deep link to the
-business number — the patient taps send themselves; nothing is sent
-automatically.
-
-## Live backend (Supabase)
-
-See [`supabase/README.md`](supabase/README.md). Tables `services`, `bookings`,
-`blocks` with `tenant_id` + RLS (multi-tenant via `tenants`/`memberships`; keep
-one tenant for a single-client instance). Public booking goes through the
-security-definer `create_booking` RPC, which re-checks availability server-side;
-a partial unique index is the final guard against races. Public availability is
-served by the `availability` RPC (busy times only, never patient data).
-
-```bash
-# .env for live mode
-VITE_MODE=live
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-VITE_TENANT_SLUG=default
-```
-
-The Supabase path is wired against this schema but has **not** been run against
-a live project in this build — the demo path is the verified one.
-
-## Design system & accessibility
-
-In-repo CSS-variable tokens (color, radius, spacing) in
-[`src/index.css`](src/index.css), a single neutral light theme, mobile-first,
-WCAG AA contrast, reduced-motion honored, nothing clipped at 375px. Brand hues
-are injected at runtime from the palette.
-
-## SEO & prerender
-
-Public pages set per-route `<title>`/description (`useDocumentHead`) and ship a
-strict Content-Security-Policy meta in `index.html`. For true static prerender
-of the public pages (`/`, `/agenda`, `/centro`), add a prerender step (e.g.
-`vite-plugin-prerender` or `@prerenderer`) over the built SPA — the head
-management and semantic markup are already in place for it.
-
-## Quality bar
-
-`pnpm build && pnpm test && pnpm test:e2e` all green. Unit tests cover the domain
-(value objects, `DayAggregate` invariant) and application use cases; Playwright
-covers book → slot busy → cancel → frees up → double-book blocked, on desktop
-and mobile.
-
-## Deploy
-
-The demo ships to GitHub Pages via
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): every push to
-`main`/`master` builds demo mode and publishes it. In the repo, enable
-**Settings → Pages → Source = GitHub Actions** once. The workflow sets the base
-to `/<repo>/` for a project page, so the URL is
-`https://<user>.github.io/<repo>/`. For a custom domain or a user page
-(`<user>.github.io`), the base is `/` — set `pathSegmentsToKeep = 0` in
-[`public/404.html`](public/404.html).
-
-Deep links (`/plantilla`, …) survive a hard reload on Pages through the
-`public/404.html` + `public/spa-restore.js` redirect pair. Only demo mode runs
-on Pages (it is fully client-side); live mode needs the Supabase backend.
-
-## Clean-room
-
-Built generically from the two reference apps' structure. No client names,
-branding or data from them; no demo passwords; no vendor error hooks; no
-country-specific phone hardcoding — all of that is driven by the two config files.
-
-## License
-
-[MIT](LICENSE) — use it, modify it, and apply it to your own business, including
-commercially. Attribution stays in the commit history and the copyright notice.
+<div align="center">
+<sub>Built by <a href="https://github.com/diego-salomon">Diego Salomón</a>. · <a href="https://www.linkedin.com/in/diegosalomon">LinkedIn</a></sub>
+</div>
