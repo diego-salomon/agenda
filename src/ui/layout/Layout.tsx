@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
+import { asset } from '@/lib/asset';
 import { cn } from '@/lib/cn';
 
 const NAV = [
@@ -31,7 +32,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <header className="site-chrome sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-1.5 px-4 py-3 sm:flex-row sm:items-center sm:gap-3">
           <Link to="/" className="flex items-center gap-2 text-text" aria-label={brand.name}>
-            <img src={brand.logoUrl} alt="" width={28} height={28} className="h-7 w-auto shrink-0" />
+            <img src={asset(brand.logoUrl)} alt="" width={28} height={28} className="h-7 w-auto shrink-0" />
             <span className="font-bold">{brand.name}</span>
           </Link>
           <nav

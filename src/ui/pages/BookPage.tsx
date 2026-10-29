@@ -17,6 +17,7 @@ import {
   whatsappLink,
 } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { asset } from '@/lib/asset';
 
 export function BookPage() {
   const { service: agendaService, brand } = useApp();
@@ -247,7 +248,7 @@ function ServiceCard({
       )}
     >
       <img
-        src={service.imageUrl}
+        src={asset(service.imageUrl)}
         alt={service.imageAlt}
         width={service.imageWidth}
         height={service.imageHeight}

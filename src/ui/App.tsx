@@ -8,9 +8,13 @@ import { AdminPage } from './pages/AdminPage';
 import { CentroPage } from './pages/CentroPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
+// Strip the trailing slash so React Router's basename is happy ('' for root,
+// '/agenda' under a Pages project path). Vite fills BASE_URL from `base`.
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '');
+
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <Layout>
         <Routes>
           <Route path="/" element={<BookPage />} />

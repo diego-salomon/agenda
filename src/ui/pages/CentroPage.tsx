@@ -3,6 +3,7 @@ import { useApp } from '../AppContext';
 import { useDocumentHead } from '../hooks/useDocumentHead';
 import { Badge, Card, buttonClasses } from '../components';
 import { formatCurrency, formatDuration, mapsLink } from '@/lib/format';
+import { asset } from '@/lib/asset';
 import { todayISO } from '../lib/days';
 
 export function CentroPage() {
@@ -92,7 +93,7 @@ export function CentroPage() {
             <li key={s.id}>
               <Card className="flex h-full gap-4 p-4">
                 <img
-                  src={s.imageUrl}
+                  src={asset(s.imageUrl)}
                   alt={s.imageAlt}
                   width={s.imageWidth}
                   height={s.imageHeight}

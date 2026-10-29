@@ -8,6 +8,12 @@ panel. The **same code** runs two ways, chosen by one env var:
   example data. For sales demos and portfolio.
 - **live** — a real Supabase backend (Postgres + Auth + RLS).
 
+**Live demo:** `https://<user>.github.io/agenda/` · **Landing:** `…/plantilla`
+_(both publish on push — see [Deploy](#deploy); fill in `<user>` once you create
+the repo)._
+
+![Agenda booking screen](docs/screenshot.jpg)
+
 ```bash
 pnpm install
 pnpm dev          # demo mode, http://localhost:5173
@@ -37,7 +43,7 @@ Everything client-specific lives in exactly two files — no brand strings in
 components, all currency/date formatting from locale + currency:
 
 - [`src/config/brand.config.ts`](src/config/brand.config.ts) — name, tagline,
-  logo, palette (light + dark), locale, currency, contact, socials, phone rules.
+  logo, palette, locale, currency, contact, socials, phone rules.
 - [`src/config/agenda.config.ts`](src/config/agenda.config.ts) — services
   catalog, opening hours, notification copy.
 
@@ -53,6 +59,7 @@ working demo on localStorage.
 | `/mi-turno` | Look up / cancel by booking code |
 | `/admin` | Admin: cancel, move, mark attended, block/free slots, reset demo (demo: client-side gate labelled *not real security*; live: Supabase Auth) |
 | `/centro` | Business info: services, hours, address, Maps link, socials — all from config |
+| `/plantilla` | Landing that presents the template: hero with the live slot grid, how it works, the two modes, white-label, honest scope |
 
 ## Domain model
 
@@ -76,13 +83,16 @@ immediately.
 
 ## Notifications
 
-Confirmation (on book), reminder (24h before), cancellation — copy templated in
-`agenda.config.ts`. Reminders are composed by `AgendaService.dueReminders()` for
-bookings inside the `reminderLeadHours` window and shown in the admin panel.
-**Demo:** rendered on screen, labelled *simulado*, nothing sent. **Live:** the
-`notify` Supabase Edge Function fans out to an SMS/WhatsApp provider behind a
-stubbed adapter, and the reminder window should be driven by a scheduled
-(cron) invocation. No email, no payments.
+Confirmation (on book), reminder, cancellation — copy templated in
+`agenda.config.ts`, sent through the `NotificationGateway` port.
+`AgendaService.sendDueReminders()` sends a reminder for every confirmed booking
+inside the `reminderLeadHours` window not yet reminded, then stamps
+`booking.remindedAt` so it never sends twice; the admin panel lists what is
+pending and triggers it. **Demo:** recorded on screen, labelled *simulado*,
+nothing leaves the browser. **Live:** the `notify` Edge Function fans each
+message out to an SMS/WhatsApp provider (stubbed adapter), and the `reminders`
+Edge Function runs that send on a schedule (cron) — see
+[`supabase/README.md`](supabase/README.md). No email, no payments.
 
 The WhatsApp "Enviar resumen" button is a plain `wa.me` deep link to the
 business number — the patient taps send themselves; nothing is sent
@@ -111,9 +121,9 @@ a live project in this build — the demo path is the verified one.
 ## Design system & accessibility
 
 In-repo CSS-variable tokens (color, radius, spacing) in
-[`src/index.css`](src/index.css), light + dark (OS preference + manual toggle),
-mobile-first, WCAG AA contrast, reduced-motion honored, nothing clipped at
-375px. Brand hues are injected at runtime from the palette.
+[`src/index.css`](src/index.css), a single neutral light theme, mobile-first,
+WCAG AA contrast, reduced-motion honored, nothing clipped at 375px. Brand hues
+are injected at runtime from the palette.
 
 ## SEO & prerender
 
@@ -130,8 +140,28 @@ management and semantic markup are already in place for it.
 covers book → slot busy → cancel → frees up → double-book blocked, on desktop
 and mobile.
 
+## Deploy
+
+The demo ships to GitHub Pages via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): every push to
+`main`/`master` builds demo mode and publishes it. In the repo, enable
+**Settings → Pages → Source = GitHub Actions** once. The workflow sets the base
+to `/<repo>/` for a project page, so the URL is
+`https://<user>.github.io/<repo>/`. For a custom domain or a user page
+(`<user>.github.io`), the base is `/` — set `pathSegmentsToKeep = 0` in
+[`public/404.html`](public/404.html).
+
+Deep links (`/plantilla`, …) survive a hard reload on Pages through the
+`public/404.html` + `public/spa-restore.js` redirect pair. Only demo mode runs
+on Pages (it is fully client-side); live mode needs the Supabase backend.
+
 ## Clean-room
 
 Built generically from the two reference apps' structure. No client names,
 branding or data from them; no demo passwords; no vendor error hooks; no
 country-specific phone hardcoding — all of that is driven by the two config files.
+
+## License
+
+[MIT](LICENSE) — use it, modify it, and apply it to your own business, including
+commercially. Attribution stays in the commit history and the copyright notice.

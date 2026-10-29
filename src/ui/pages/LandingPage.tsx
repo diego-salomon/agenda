@@ -14,6 +14,10 @@ import { CheckIcon, MonitorIcon, DatabaseIcon, SlidersIcon } from '../components
  * chrome and seed data are the example brand it ships with.
  */
 
+// The public repo, shown as "Ver el código" once set. Fill it in after you
+// create the repo on GitHub, e.g. 'https://github.com/<usuario>/agenda'.
+const REPO_URL = '';
+
 // A static day used only for the hero preview — all four slot states on screen.
 const PREVIEW_SLOTS: DaySlot[] = [
   { time: '08:00', status: 'past' },
@@ -67,6 +71,16 @@ function Hero({ exampleName }: { exampleName: string }) {
           <a className={buttonClasses('ghost', 'lg')} href="#como-funciona">
             Cómo funciona
           </a>
+          {REPO_URL && (
+            <a
+              className={buttonClasses('ghost', 'lg')}
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ver el código
+            </a>
+          )}
         </div>
         <p className="text-sm text-text-muted">Sin registro ni instalación.</p>
       </div>
@@ -271,9 +285,21 @@ function FinalCta(): ReactNode {
         Reserva un turno, míralo aparecer en el panel y cancélalo. Es la demo completa, sin registro
         ni instalación.
       </p>
-      <Link className={buttonClasses('primary', 'lg')} to="/">
-        Probar la demo
-      </Link>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Link className={buttonClasses('primary', 'lg')} to="/">
+          Probar la demo
+        </Link>
+        {REPO_URL && (
+          <a
+            className={buttonClasses('ghost', 'lg')}
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Ver el código en GitHub
+          </a>
+        )}
+      </div>
     </section>
   );
 }

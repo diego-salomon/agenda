@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 
 export default defineConfig({
+  // '/' for local dev and user/custom-domain Pages; the Pages workflow sets
+  // VITE_BASE to '/<repo>/' for a project page so asset URLs resolve.
+  base: process.env.VITE_BASE || '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
